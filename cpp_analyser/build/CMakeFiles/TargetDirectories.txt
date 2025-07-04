@@ -1,0 +1,3 @@
+D:/Accessibility Analyser/cpp_analyser/build/CMakeFiles/accessibility_cpp_analyser.dir
+D:/Accessibility Analyser/cpp_analyser/build/CMakeFiles/edit_cache.dir
+D:/Accessibility Analyser/cpp_analyser/build/CMakeFiles/rebuild_cache.dir

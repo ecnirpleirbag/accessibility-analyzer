@@ -1,0 +1,7 @@
+# ninja log v6
+6389	6926	7732668211361513	accessibility_cpp_analyser.exe	9d2ebe0bc8bb66fa
+2	6382	7732668147527993	CMakeFiles/accessibility_cpp_analyser.dir/main.cpp.obj	48eeab62151dcfff
+9	1723	7733141634347225	build.ninja	b391e737309a8938
+81	5696	7733141636500575	CMakeFiles/accessibility_cpp_analyser.dir/pugixml.cpp.obj	3d7a2a1958623490
+52	5847	7733141636208014	CMakeFiles/accessibility_cpp_analyser.dir/main.cpp.obj	48eeab62151dcfff
+5848	6506	7733141694166423	accessibility_cpp_analyser.exe	109a15443b995622

@@ -1,0 +1,13 @@
+{
+  "name": "accessibility-analyser-axe",
+  "version": "1.0.0",
+  "description": "Node.js script to run axe-core accessibility checks via Puppeteer.",
+  "main": "run_axe.js",
+  "scripts": {
+    "axe": "node run_axe.js"
+  },
+  "dependencies": {
+    "@axe-core/puppeteer": "^4.7.2",
+    "puppeteer": "^24.11.2"
+  }
+}

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Accessibility Results</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <a href="#resultsContent" class="skip-link">Skip to Results</a>
+    <h1>Accessibility Analysis Results</h1>
+    <form id="analyzeForm" action="/analyze" method="post" enctype="multipart/form-data" style="margin-bottom: 2em;">
+        <label for="url">Enter URL:</label>
+        <input type="text" id="url" name="url" placeholder="https://example.com"><br><br>
+        <label for="file">Or upload HTML file:</label>
+        <input type="file" id="file" name="file"><br><br>
+        <button type="submit" id="analyzeBtn">Analyze Again</button>
+    </form>
+    <div id="loadingSpinner" aria-live="polite" style="display:none;text-align:center;margin:1em 0;">
+        <span class="spinner" aria-label="Loading" role="status"></span>
+        <span style="font-weight:bold;">Analyzing...</span>
+    </div>
+    <div id="resultsContent" role="main" tabindex="-1" aria-label="Accessibility analysis results">
+    {% if error %}
+        <div style="color: red;">{{ error }}</div>
+    {% else %}
+        <h2>Issue Severity Overview</h2>
+        <div style="max-width:600px;margin-bottom:30px;">
+            <canvas id="severityBarChart" aria-label="Grouped bar chart of issue severity by category" tabindex="0" role="img"></canvas>
+        </div>
+        <script type="application/json" id="severityDataJson">
+            {{ severity_data | tojson | safe }}
+        </script>
+        <script id="barChartScript">
+        function renderBarChart() {
+            const severityData = JSON.parse(document.getElementById('severityDataJson').textContent);
+            const ctx = document.getElementById('severityBarChart').getContext('2d');
+            if (window.barChartInstance) window.barChartInstance.destroy();
+            window.barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: severityData.categories,
+                    datasets: [
+                        {
+                            label: 'Errors',
+                            data: severityData.errors,
+                            backgroundColor: '#d32f2f',
+                            borderColor: '#b71c1c',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Warnings',
+                            data: severityData.warnings,
+                            backgroundColor: '#fbc02d',
+                            borderColor: '#f57c00',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { labels: { color: '#222', font: { weight: 'bold' } } },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y;
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Accessibility Issues by Category',
+                            color: '#111',
+                            font: { size: 18 }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#111' }, grid: { color: '#ccc' } },
+                        y: { beginAtZero: true, ticks: { color: '#111' }, grid: { color: '#ccc' } }
+                    },
+                    animation: false,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        renderBarChart();
+        </script>
+        <h2>Issue Type Distribution</h2>
+        <div style="max-width:500px;margin-bottom:10px;">
+            <canvas id="issueTypePieChart" aria-label="Doughnut chart of issue type distribution" tabindex="0" role="img"></canvas>
+        </div>
+        <button id="showAllBtn" style="margin-bottom:20px;display:none;">Show All Issues</button>
+        <script type="application/json" id="issueTypeDataJson">
+            {{ issue_type_data | tojson | safe }}
+        </script>
+        <script id="pieChartScript">
+        function renderPieChart() {
+            const issueTypeData = JSON.parse(document.getElementById('issueTypeDataJson').textContent);
+            const pieCtx = document.getElementById('issueTypePieChart').getContext('2d');
+            const showAllBtn = document.getElementById('showAllBtn');
+            if (window.pieChartInstance) window.pieChartInstance.destroy();
+            window.pieChartInstance = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: issueTypeData.labels,
+                    datasets: [{
+                        data: issueTypeData.counts,
+                        backgroundColor: [
+                            '#1976d2',
+                            '#388e3c',
+                            '#fbc02d',
+                            '#d32f2f',
+                            '#7b1fa2'
+                        ],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { labels: { color: '#222', font: { weight: 'bold' } } },
+                        tooltip: { enabled: true },
+                        title: {
+                            display: true,
+                            text: 'Distribution of Issue Types',
+                            color: '#111',
+                            font: { size: 18 }
+                        }
+                    },
+                    animation: false,
+                    maintainAspectRatio: false,
+                    onClick: (evt, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const type = issueTypeData.labels[idx];
+                            document.querySelectorAll('[data-issue-type]').forEach(el => {
+                                el.style.display = (el.getAttribute('data-issue-type') === type) ? '' : 'none';
+                            });
+                            showAllBtn.style.display = '';
+                        }
+                    }
+                }
+            });
+            showAllBtn.onclick = () => {
+                document.querySelectorAll('[data-issue-type]').forEach(el => { el.style.display = ''; });
+                showAllBtn.style.display = 'none';
+            };
+        }
+        renderPieChart();
+        </script>
+        <h2>Report Preview</h2>
+        <div style="max-width:350px;margin-bottom:20px;">
+            <img src="/report_trend.png" alt="Trends chart preview" style="width:100%;border:1px solid #ccc;" />
+        </div>
+        <a href="/report_trend.png" download="accessibility_trends.png" style="font-weight:bold;">Download Full Trends Chart (PNG)</a>
+        <h2>Interactive Trends</h2>
+        <div style="max-width:600px;margin-bottom:30px;">
+            <canvas id="historyLineChart" aria-label="Line chart of historical accessibility issues" tabindex="0" role="img"></canvas>
+        </div>
+        <script id="lineChartScript">
+        async function renderHistoryLineChart() {
+            const resp = await fetch('/history_data');
+            const data = await resp.json();
+            const ctx = document.getElementById('historyLineChart').getContext('2d');
+            if (window.lineChartInstance) window.lineChartInstance.destroy();
+            window.lineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels.length ? data.labels : ['No scans yet'],
+                    datasets: [{
+                        label: 'Total Issues',
+                        data: data.totals.length ? data.totals : [0],
+                        fill: false,
+                        borderColor: '#1976d2',
+                        backgroundColor: '#1976d2',
+                        tension: 0.2,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#1976d2',
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { labels: { color: '#222', font: { weight: 'bold' } } },
+                        title: {
+                            display: true,
+                            text: 'Historical Accessibility Issues',
+                            color: '#111',
+                            font: { size: 18 }
+                        },
+                        tooltip: { enabled: true }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#111', maxRotation: 60, minRotation: 30 }, grid: { color: '#eee' } },
+                        y: { beginAtZero: true, ticks: { color: '#111' }, grid: { color: '#eee' } }
+                    },
+                    animation: false,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        renderHistoryLineChart();
+        </script>
+        <script>
+        // Re-initialize all charts after AJAX updates
+        function reinitAllCharts() {
+            renderBarChart();
+            renderPieChart();
+            renderHistoryLineChart();
+        }
+        // Listen for AJAX content replacement
+        const observer = new MutationObserver(() => {
+            if (document.getElementById('severityBarChart')) renderBarChart();
+            if (document.getElementById('issueTypePieChart')) renderPieChart();
+            if (document.getElementById('historyLineChart')) renderHistoryLineChart();
+        });
+        observer.observe(document.getElementById('resultsContent'), { childList: true });
+        </script>
+        <h2>Summary</h2>
+        <table border="1" cellpadding="6" style="background:#fff;">
+            <tr><th>Check</th><th>Total</th><th>Issues Found</th></tr>
+            <tr><td>Images missing alt text</td><td>{{ results.alt.total }}</td><td>{{ results.alt.missing }}</td></tr>
+            <tr><td>Skipped heading levels</td><td>{{ results.headings.total }}</td><td>{{ results.headings.skipped }}</td></tr>
+            <tr><td>Inputs missing labels</td><td>{{ results.form_labels.total }}</td><td>{{ results.form_labels.missing }}</td></tr>
+        </table>
+        <h2>Details</h2>
+        <h3>Images missing alt text</h3>
+        <div data-issue-type="Alt Text" aria-label="Images missing alt text section">
+        {% if results.alt.missing_elements %}
+            <ul>
+            {% for el in results.alt.missing_elements %}
+                <li><code>{{ el|safe }}</code></li>
+            {% endfor %}
+            </ul>
+        {% else %}<p>None!</p>{% endif %}
+        </div>
+        <h3>Skipped heading levels</h3>
+        <div data-issue-type="Headings" aria-label="Skipped heading levels section">
+        {% if results.headings.skipped_elements %}
+            <ul>
+            {% for el in results.headings.skipped_elements %}
+                <li><code>{{ el|safe }}</code></li>
+            {% endfor %}
+            </ul>
+        {% else %}<p>None!</p>{% endif %}
+        </div>
+        <h3>Inputs missing labels</h3>
+        <div data-issue-type="Form Labels" aria-label="Inputs missing labels section">
+        {% if results.form_labels.missing_elements %}
+            <ul>
+            {% for el in results.form_labels.missing_elements %}
+                <li><code>{{ el|safe }}</code></li>
+            {% endfor %}
+            </ul>
+        {% else %}<p>None!</p>{% endif %}
+        </div>
+        <h3>Alt Text Quality (ML/NLP Analysis)</h3>
+        {% if results.alt_quality %}
+            <table border="1" cellpadding="6" style="background:#f9f9f9;">
+                <tr><th>Image</th><th>Alt Text</th><th>Score</th><th>Label</th></tr>
+                {% for item in results.alt_quality %}
+                    <tr>
+                        <td><code>{{ item.img|safe }}</code></td>
+                        <td>{{ item.alt }}</td>
+                        <td>{{ '%.2f'|format(item.score) }}</td>
+                        <td>{{ item.label }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No images found for alt text analysis.</p>
+        {% endif %}
+        <h3>C++ Static Analysis Results</h3>
+        <div data-issue-type="ARIA (C++)" aria-label="C++ static analysis section">
+        {% if results.cpp_analysis %}
+            {% if results.cpp_analysis.error %}
+                <div style="color: red;">C++ Analyzer error: {{ results.cpp_analysis.error }}</div>
+            {% else %}
+                <ul>
+                    <li><strong>Elements missing ARIA attributes or role:</strong> {{ results.cpp_analysis.missing_aria }}</li>
+                    <li><strong>Skipped heading levels:</strong> {{ results.cpp_analysis.skipped_headings }}</li>
+                </ul>
+            {% endif %}
+        {% else %}
+            <p style="color:gray;">C++ static analysis not available.</p>
+        {% endif %}
+        </div>
+        {% if url %}
+            <form action="/download_report" method="get" style="margin-top:20px;">
+                <input type="hidden" name="url" value="{{ url }}">
+                <button type="submit">Download Report (CSV)</button>
+            </form>
+        {% else %}
+            <p style="color:gray;">Download available only for URL input.</p>
+        {% endif %}
+        <h2>axe-core Automated Accessibility Results</h2>
+        <div data-issue-type="axe-core" aria-label="axe-core automated accessibility results section">
+        {% if axe_results %}
+            {% if axe_results.error %}
+                <div style="color: red;">axe-core error: {{ axe_results.error }}</div>
+            {% else %}
+                <p>Total Violations: <strong>{{ axe_results.violations|length }}</strong></p>
+                {% if axe_results.violations %}
+                    <ul>
+                    {% for v in axe_results.violations %}
+                        <li>
+                            <strong>{{ v.id }}</strong>: {{ v.description }}<br>
+                            <em>Impact:</em> {{ v.impact }}<br>
+                            <em>Help:</em> <a href="{{ v.helpUrl }}" target="_blank">{{ v.help }}</a><br>
+                            <em>Nodes:</em>
+                            <ul>
+                                {% for node in v.nodes %}
+                                    <li><code>{{ node.html|safe }}</code></li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No violations found by axe-core!</p>
+                {% endif %}
+            {% endif %}
+        {% else %}
+            <p style="color:gray;">axe-core results not available.</p>
+        {% endif %}
+        </div>
+    {% endif %}
+    </div>
+    <a href="/">&#8592; Back to Home</a>
+    <script>
+    document.querySelector('.skip-link').addEventListener('click', function(e) {
+        const main = document.getElementById('resultsContent');
+        if (main) { main.focus(); }
+    });
+    document.getElementById('analyzeForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const spinner = document.getElementById('loadingSpinner');
+        spinner.style.display = '';
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        spinner.style.display = 'none';
+        if (response.ok) {
+            const html = await response.text();
+            document.getElementById('resultsContent').innerHTML = html;
+        } else {
+            alert('Error analyzing page.');
+        }
+    });
+    </script>
+</body>
+</html> 

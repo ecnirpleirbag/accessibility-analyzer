@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Accessibility Analyser</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Accessibility Analyser</h1>
+    <form id="analyzeForm" action="/analyze" method="post" enctype="multipart/form-data">
+        <label for="url">Enter URL:</label>
+        <input type="text" id="url" name="url" placeholder="https://example.com"><br><br>
+        <label for="file">Or upload HTML file:</label>
+        <input type="file" id="file" name="file"><br><br>
+        <button type="submit" id="analyzeBtn">Analyze</button>
+    </form>
+</body>
+</html> 

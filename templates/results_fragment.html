@@ -1,0 +1,236 @@
+{% if error %}
+    <div style="color: red;">{{ error }}</div>
+{% else %}
+    <h2>Issue Severity Overview</h2>
+    <div style="max-width:600px;margin-bottom:30px;">
+        <canvas id="severityBarChart" aria-label="Bar chart of issue severity by category" tabindex="0"></canvas>
+    </div>
+    <script type="application/json" id="severityDataJson">
+        {{ severity_data | tojson | safe }}
+    </script>
+    <script>
+        const severityData = JSON.parse(document.getElementById('severityDataJson').textContent);
+        const ctx = document.getElementById('severityBarChart').getContext('2d');
+        const barChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: severityData.categories,
+                datasets: [
+                    {
+                        label: 'Errors',
+                        data: severityData.errors,
+                        backgroundColor: '#d32f2f',
+                        borderColor: '#b71c1c',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Warnings',
+                        data: severityData.warnings,
+                        backgroundColor: '#fbc02d',
+                        borderColor: '#f57c00',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#222', font: { weight: 'bold' } } },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y;
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Accessibility Issues by Category',
+                        color: '#111',
+                        font: { size: 18 }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: '#111' }, grid: { color: '#ccc' } },
+                    y: { beginAtZero: true, ticks: { color: '#111' }, grid: { color: '#ccc' } }
+                },
+                animation: false,
+                maintainAspectRatio: false
+            }
+        });
+    </script>
+    <h2>Issue Type Distribution</h2>
+    <div style="max-width:500px;margin-bottom:10px;">
+        <canvas id="issueTypePieChart" aria-label="Pie chart of issue type distribution" tabindex="0"></canvas>
+    </div>
+    <button id="showAllBtn" style="margin-bottom:20px;display:none;">Show All Issues</button>
+    <script type="application/json" id="issueTypeDataJson">
+        {{ issue_type_data | tojson | safe }}
+    </script>
+    <script>
+        const issueTypeData = JSON.parse(document.getElementById('issueTypeDataJson').textContent);
+        const pieCtx = document.getElementById('issueTypePieChart').getContext('2d');
+        const showAllBtn = document.getElementById('showAllBtn');
+        const pieChart = new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: issueTypeData.labels,
+                datasets: [{
+                    data: issueTypeData.counts,
+                    backgroundColor: [
+                        '#1976d2',
+                        '#388e3c',
+                        '#fbc02d',
+                        '#d32f2f',
+                        '#7b1fa2'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#222', font: { weight: 'bold' } } },
+                    tooltip: { enabled: true },
+                    title: {
+                        display: true,
+                        text: 'Distribution of Issue Types',
+                        color: '#111',
+                        font: { size: 18 }
+                    }
+                },
+                animation: false,
+                maintainAspectRatio: false,
+                onClick: (evt, elements) => {
+                    if (elements.length > 0) {
+                        const idx = elements[0].index;
+                        const type = issueTypeData.labels[idx];
+                        document.querySelectorAll('[data-issue-type]').forEach(el => {
+                            el.style.display = (el.getAttribute('data-issue-type') === type) ? '' : 'none';
+                        });
+                        showAllBtn.style.display = '';
+                    }
+                }
+            }
+        });
+        showAllBtn.onclick = () => {
+            document.querySelectorAll('[data-issue-type]').forEach(el => { el.style.display = ''; });
+            showAllBtn.style.display = 'none';
+        };
+    </script>
+    <h2>Report Preview</h2>
+    <div style="max-width:350px;margin-bottom:20px;">
+        <img src="/report_trend.png" alt="Trends chart preview" style="width:100%;border:1px solid #ccc;" />
+    </div>
+    <a href="/report_trend.png" download="accessibility_trends.png" style="font-weight:bold;">Download Full Trends Chart (PNG)</a>
+    <h2>Summary</h2>
+    <table border="1" cellpadding="6" style="background:#fff;">
+        <tr><th>Check</th><th>Total</th><th>Issues Found</th></tr>
+        <tr><td>Images missing alt text</td><td>{{ results.alt.total }}</td><td>{{ results.alt.missing }}</td></tr>
+        <tr><td>Skipped heading levels</td><td>{{ results.headings.total }}</td><td>{{ results.headings.skipped }}</td></tr>
+        <tr><td>Inputs missing labels</td><td>{{ results.form_labels.total }}</td><td>{{ results.form_labels.missing }}</td></tr>
+    </table>
+    <h2>Details</h2>
+    <h3>Images missing alt text</h3>
+    <div data-issue-type="Alt Text">
+    {% if results.alt.missing_elements %}
+        <ul>
+        {% for el in results.alt.missing_elements %}
+            <li><code>{{ el|safe }}</code></li>
+        {% endfor %}
+        </ul>
+    {% else %}<p>None!</p>{% endif %}
+    </div>
+    <h3>Skipped heading levels</h3>
+    <div data-issue-type="Headings">
+    {% if results.headings.skipped_elements %}
+        <ul>
+        {% for el in results.headings.skipped_elements %}
+            <li><code>{{ el|safe }}</code></li>
+        {% endfor %}
+        </ul>
+    {% else %}<p>None!</p>{% endif %}
+    </div>
+    <h3>Inputs missing labels</h3>
+    <div data-issue-type="Form Labels">
+    {% if results.form_labels.missing_elements %}
+        <ul>
+        {% for el in results.form_labels.missing_elements %}
+            <li><code>{{ el|safe }}</code></li>
+        {% endfor %}
+        </ul>
+    {% else %}<p>None!</p>{% endif %}
+    </div>
+    <h3>Alt Text Quality (ML/NLP Analysis)</h3>
+    {% if results.alt_quality %}
+        <table border="1" cellpadding="6" style="background:#f9f9f9;">
+            <tr><th>Image</th><th>Alt Text</th><th>Score</th><th>Label</th></tr>
+            {% for item in results.alt_quality %}
+                <tr>
+                    <td><code>{{ item.img|safe }}</code></td>
+                    <td>{{ item.alt }}</td>
+                    <td>{{ '%.2f'|format(item.score) }}</td>
+                    <td>{{ item.label }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No images found for alt text analysis.</p>
+    {% endif %}
+    <h3>C++ Static Analysis Results</h3>
+    <div data-issue-type="ARIA (C++)">
+    {% if results.cpp_analysis %}
+        {% if results.cpp_analysis.error %}
+            <div style="color: red;">C++ Analyzer error: {{ results.cpp_analysis.error }}</div>
+        {% else %}
+            <ul>
+                <li><strong>Elements missing ARIA attributes or role:</strong> {{ results.cpp_analysis.missing_aria }}</li>
+                <li><strong>Skipped heading levels:</strong> {{ results.cpp_analysis.skipped_headings }}</li>
+            </ul>
+        {% endif %}
+    {% else %}
+        <p style="color:gray;">C++ static analysis not available.</p>
+    {% endif %}
+    </div>
+    {% if url %}
+        <form action="/download_report" method="get" style="margin-top:20px;">
+            <input type="hidden" name="url" value="{{ url }}">
+            <button type="submit">Download Report (CSV)</button>
+        </form>
+    {% else %}
+        <p style="color:gray;">Download available only for URL input.</p>
+    {% endif %}
+    <h2>axe-core Automated Accessibility Results</h2>
+    <div data-issue-type="axe-core">
+    {% if axe_results %}
+        {% if axe_results.error %}
+            <div style="color: red;">axe-core error: {{ axe_results.error }}</div>
+        {% else %}
+            <p>Total Violations: <strong>{{ axe_results.violations|length }}</strong></p>
+            {% if axe_results.violations %}
+                <ul>
+                {% for v in axe_results.violations %}
+                    <li>
+                        <strong>{{ v.id }}</strong>: {{ v.description }}<br>
+                        <em>Impact:</em> {{ v.impact }}<br>
+                        <em>Help:</em> <a href="{{ v.helpUrl }}" target="_blank">{{ v.help }}</a><br>
+                        <em>Nodes:</em>
+                        <ul>
+                            {% for node in v.nodes %}
+                                <li><code>{{ node.html|safe }}</code></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p>No violations found by axe-core!</p>
+            {% endif %}
+        {% endif %}
+    {% else %}
+        <p style="color:gray;">axe-core results not available.</p>
+    {% endif %}
+    </div>
+{% endif %} 
